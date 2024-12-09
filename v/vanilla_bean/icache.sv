@@ -38,8 +38,8 @@ module icache
     // icache read (by processor)
     , input [pc_width_lp-1:0] pc_i
     , input [pc_width_lp-1:0] jalr_prediction_i
-    , output [RV32_instr_width_gp-1:0] instr_o
-    , output [pc_width_lp-1:0] pred_or_jump_addr_o
+    , output [RV32_instr_width_gp-1:0] instr_o [0:1]
+    , output [pc_width_lp-1:0] pred_or_jump_addr_o  // TODO: Move this into our new, high-level decoder module, since only that module can know which address to predict
     , output [pc_width_lp-1:0] pc_r_o
     , output icache_miss_o
     , output icache_flush_r_o
@@ -85,7 +85,7 @@ module icache
     ,.w_i(w_i)
     ,.addr_i(icache_addr_li)
     ,.data_i(icache_data_li)
-    ,.data_o(icache_data_lo)
+    ,.data_o(icache_data_lo) // TODO: If this is too small, we may need to double its width (to hold 2 instructions at once)
   );
 
   assign icache_addr_li = w_i
@@ -222,15 +222,20 @@ module icache
   // Energy-saving logic
   // - Don't read the icache if the current pc is not at the last word of the block, and 
   //   there is a hint from the next-pc logic that it is reading pc+4 next (no branch or jump).
+  // TODO: May need to read if current pc is at the second-to-last word of the
+  // block, because the last two words (i.e. instructions) might be
+  // dual-issued by the processor.
+  // TODO: Maybe just turn this permanently on?
   assign v_li = w_i
     ? write_en_icache
-    : (v_i & ((&pc_r[0+:icache_block_offset_width_lp]) | ~read_pc_plus4_i));
+    : (v_i & ((&pc_r[1+:icache_block_offset_width_lp-1]) | ~read_pc_plus4_i));
 
 
   // Merge the PC lower part and high part
   // BYTE operations
-  instruction_s instr_out;
-  assign instr_out = icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp]];
+  instruction_s instr_out [0:1];
+  assign instr_out = '{icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp]],
+                       icache_data_lo.instr[pc_r[icache_block_offset_width_lp+:icache_block_offset_width_lp]]};
   wire lower_sign_out = icache_data_lo.lower_sign[pc_r[0+:icache_block_offset_width_lp]];
   wire lower_cout_out = icache_data_lo.lower_cout[pc_r[0+:icache_block_offset_width_lp]];
   wire sel_pc    = ~(lower_sign_out ^ lower_cout_out); 
