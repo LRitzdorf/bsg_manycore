@@ -6,7 +6,7 @@ module alu
   #(`BSG_INV_PARAM(pc_width_p ))
            ( input [RV32_reg_data_width_gp-1:0] rs1_i
             ,input [RV32_reg_data_width_gp-1:0] rs2_i
-            ,input [RV32_reg_data_width_gp-1:0] pc_plus4_i
+            ,input [RV32_reg_data_width_gp-1:0] pc_next_i
             ,input  instruction_s op_i
             ,output logic [RV32_reg_data_width_gp-1:0] result_o
             ,output logic [pc_width_p-1:0] jalr_addr_o
@@ -53,7 +53,7 @@ always_comb
         result_o = `RV32_signext_Uimm(op_i);
 
       `RV32_AUIPC:
-        result_o = `RV32_signext_Uimm(op_i) + pc_plus4_i - 3'b100;
+        result_o = `RV32_signext_Uimm(op_i) + pc_next_i - 3'b100;
 
       `RV32_ADDI, `RV32_ADD:
         begin
@@ -108,12 +108,12 @@ always_comb
           sub_not_add = 1'b0;
 //          jalr_addr_o = sum[31:0] & 32'hfffe;
           jalr_addr_o = sum[2+:pc_width_p];
-          result_o    = pc_plus4_i;
+          result_o    = pc_next_i;
         end
 
       `RV32_JAL:
         begin
-          result_o    =pc_plus4_i;
+          result_o    =pc_next_i;
         end
       default:
         begin

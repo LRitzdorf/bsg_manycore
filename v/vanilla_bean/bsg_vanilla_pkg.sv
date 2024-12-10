@@ -214,7 +214,7 @@ typedef struct packed {
 // Instruction decode stage signals
 typedef struct packed
 {
-    logic [RV32_reg_data_width_gp-1:0] pc_plus4;          // PC + 4
+    logic [RV32_reg_data_width_gp-1:0] pc_next;           // PC + 4 (or +8, if dual-issuing)
     logic [RV32_reg_data_width_gp-1:0] pred_or_jump_addr; // Jump target PC
     instruction_s                      instruction;       // Instruction being executed
     decode_s                           decode;            // Decode signals
@@ -227,7 +227,7 @@ typedef struct packed
 // Execute stage signals
 typedef struct packed
 {
-    logic [RV32_reg_data_width_gp-1:0] pc_plus4;          // PC + 4
+    logic [RV32_reg_data_width_gp-1:0] pc_next;           // PC + 4 (or +8, if dual-issuing)
     logic [RV32_reg_data_width_gp-1:0] pred_or_jump_addr; // Jump target PC
     instruction_s                      instruction;       // Instruction being executed
     decode_s                           decode;            // Decode signals

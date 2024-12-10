@@ -146,7 +146,7 @@ module vanilla_core
   localparam lg_icache_block_size_in_words_lp = `BSG_SAFE_CLOG2(icache_block_size_in_words_p);
   logic icache_v_li;
   logic icache_w_li;
-  logic icache_read_pc_plus4_li;
+  logic icache_read_pc_next_li;
 
   logic [pc_width_lp-1:0] icache_w_pc;
   logic [data_width_p-1:0] icache_winstr;
@@ -174,7 +174,7 @@ module vanilla_core
     ,.v_i(icache_v_li)
     ,.w_i(icache_w_li)
     ,.flush_i(icache_flush)
-    ,.read_pc_plus4_i(icache_read_pc_plus4_li)
+    ,.read_pc_next_i(icache_read_pc_next_li)
     ,.stall_for_single_issue() // TODO: This comes from the new decoder
 
     ,.w_pc_i(icache_w_pc)
@@ -193,7 +193,7 @@ module vanilla_core
 
   // NOTE: This is stored without its two LSBs, which are always zero
   // TODO: This sometimes has to increment by 8 instead of 4
-  wire [pc_width_lp-1:0] pc_plus4 = pc_r + 1'b1;
+  wire [pc_width_lp-1:0] pc_next = pc_r + 1'b1;
 
   // ifetch counter
   logic [lg_icache_block_size_in_words_lp-1:0] ifetch_count_r;
@@ -211,8 +211,8 @@ module vanilla_core
   // debug pc
   // synopsys translate_off
   wire [data_width_p-1:0] if_pc = {{(data_width_p-pc_width_lp-2){1'b0}}, pc_r, 2'b00};
-  wire [data_width_p-1:0] id_pc = (id_r.pc_plus4 - 'd4);
-  wire [data_width_p-1:0] exe_pc = (exe_r.pc_plus4 - 'd4);
+  wire [data_width_p-1:0] id_pc = (id_r.pc_next - 'd4);
+  wire [data_width_p-1:0] exe_pc = (exe_r.pc_next - 'd4);
   // synopsys translate_on
 
   // instruction decode
@@ -648,7 +648,7 @@ module vanilla_core
   ) alu0 (
     .rs1_i(exe_r.rs1_val)
     ,.rs2_i(exe_r.rs2_val)
-    ,.pc_plus4_i(exe_r.pc_plus4)
+    ,.pc_next_i(exe_r.pc_next)
     ,.op_i(exe_r.instruction)
     ,.result_o(alu_result)
     ,.jalr_addr_o(alu_jalr_addr)
@@ -669,7 +669,7 @@ module vanilla_core
     .clk_i(clk_i)
     ,.reset_i(reset_i)
     ,.en_i(jalr_prediction_write_en)
-    ,.data_i(exe_r.pc_plus4[2+:pc_width_lp])
+    ,.data_i(exe_r.pc_next[2+:pc_width_lp])
     ,.data_o(jalr_prediction)
   ); 
 
@@ -729,7 +729,7 @@ module vanilla_core
     ,.exe_rs2_i(exe_r.rs2_val)
     ,.exe_rd_i(exe_r.instruction.rd)
     ,.mem_offset_i(exe_r.mem_addr_op2)
-    ,.pc_plus4_i(exe_r.pc_plus4)
+    ,.pc_next_i(exe_r.pc_next)
     ,.icache_miss_i(exe_r.icache_miss)
 
     ,.remote_req_o(remote_req_o)
@@ -793,7 +793,7 @@ module vanilla_core
       npc_n = exe_r.pred_or_jump_addr[2+:pc_width_lp];
     end
     else begin
-      npc_n = exe_r.pc_plus4[2+:pc_width_lp];
+      npc_n = exe_r.pc_next[2+:pc_width_lp];
     end
   end
 
@@ -1175,7 +1175,7 @@ module vanilla_core
 
   // Next PC logic
   always_comb begin
-    icache_read_pc_plus4_li = 1'b0;
+    icache_read_pc_next_li = 1'b0;
     if (reset_down) begin
       pc_n = pc_init_val_i;
     end
@@ -1196,7 +1196,7 @@ module vanilla_core
     else if (branch_mispredict) begin
       pc_n = alu_jump_now
         ? exe_r.pred_or_jump_addr[2+:pc_width_lp]
-        : exe_r.pc_plus4[2+:pc_width_lp];
+        : exe_r.pc_next[2+:pc_width_lp];
     end
     else if (jalr_mispredict) begin
       pc_n = alu_jalr_addr;
@@ -1208,8 +1208,8 @@ module vanilla_core
       pc_n = pred_or_jump_addr;
     end
     else begin
-      icache_read_pc_plus4_li = 1'b1;
-      pc_n = pc_plus4;
+      icache_read_pc_next_li = 1'b1;
+      pc_n = pc_next;
     end
   end
   
@@ -1274,7 +1274,7 @@ module vanilla_core
   always_comb begin
     // common case
     id_n = '{
-      pc_plus4: {{(data_width_p-pc_width_lp-2){1'b0}}, pc_plus4, 2'b0},
+      pc_next: {{(data_width_p-pc_width_lp-2){1'b0}}, pc_next, 2'b0},
       pred_or_jump_addr: {{(data_width_p-pc_width_lp-2){1'b0}}, pred_or_jump_addr, 2'b0},
       instruction: instruction,
       decode: decode,
@@ -1303,7 +1303,7 @@ module vanilla_core
       else if (icache_miss) begin
         id_en = 1'b1;
         id_n = '{
-          pc_plus4: {{(data_width_p-pc_width_lp-2){1'b0}}, pc_plus4, 2'b0},
+          pc_next: {{(data_width_p-pc_width_lp-2){1'b0}}, pc_next, 2'b0},
           pred_or_jump_addr: '0,
           instruction: '0,
           decode: '0,
@@ -1571,7 +1571,7 @@ module vanilla_core
   always_comb begin
     // common case
     exe_n = '{
-      pc_plus4: id_r.pc_plus4,
+      pc_next: id_r.pc_next,
       valid: id_r.valid,
       pred_or_jump_addr: id_r.pred_or_jump_addr,
       instruction: id_r.instruction,
@@ -1601,10 +1601,10 @@ module vanilla_core
       end
       else if (id_r.decode.is_fp_op) begin
         // for fp_op, we still want to keep track of npc_r.
-        // so we set the valid and pc_plus4.
+        // so we set the valid and pc_next.
         exe_en = 1'b1;
         exe_n = '{
-          pc_plus4: id_r.pc_plus4,
+          pc_next: id_r.pc_next,
           valid: id_r.valid,
           pred_or_jump_addr: '0,
           instruction: '0,

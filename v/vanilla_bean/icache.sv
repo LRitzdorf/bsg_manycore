@@ -29,7 +29,7 @@ module icache
     , input v_i
     , input w_i
     , input flush_i
-    , input read_pc_plus4_i
+    , input read_pc_next_i
     , input stall_for_single_issue
 
     // icache write
@@ -227,7 +227,7 @@ module icache
   // TODO: Maybe just turn this permanently on, if it causes too much trouble?
   assign v_li = w_i
     ? write_en_icache
-    : (v_i & ((&pc_r[1+:icache_block_offset_width_lp-1]) | ~read_pc_plus4_i));
+    : (v_i & ((&pc_r[1+:icache_block_offset_width_lp-1]) | ~read_pc_next_i));
 
 
   // Merge the PC lower part and high part
