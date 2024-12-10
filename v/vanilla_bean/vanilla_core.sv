@@ -152,7 +152,7 @@ module vanilla_core
   logic [data_width_p-1:0] icache_winstr;
 
   logic [pc_width_lp-1:0] pc_n, pc_r;
-  instruction_s instruction;
+  instruction_s instruction [0:1]; // TODO: This is now a 2-element vector; update it in all the places
   logic icache_miss;
   logic icache_flush;
   logic icache_flush_r_lo;
@@ -175,6 +175,7 @@ module vanilla_core
     ,.w_i(icache_w_li)
     ,.flush_i(icache_flush)
     ,.read_pc_plus4_i(icache_read_pc_plus4_li)
+    ,.stall_for_single_issue() // TODO: This comes from the new decoder
 
     ,.w_pc_i(icache_w_pc)
     ,.w_instr_i(icache_winstr)
@@ -190,6 +191,8 @@ module vanilla_core
     ,.branch_predicted_taken_o(icache_branch_predicted_taken_lo)
   );
 
+  // NOTE: This is stored without its two LSBs, which are always zero
+  // TODO: This sometimes has to increment by 8 instead of 4
   wire [pc_width_lp-1:0] pc_plus4 = pc_r + 1'b1;
 
   // ifetch counter
