@@ -9,6 +9,12 @@ Architecture:
 - Provide feedback signal to icache when we're single-issuing, causing it to "freeze" its outputs for an additional clock cycle
 
 When to *NOT* dual-issue instructions:
+- First instruction is a special operation:
+  - Fence
+  - Send/recv barrier
+  - CSR
+  - MRET
+  - Conditional branch
 - Two instructions of same type (INT/FP)
 - Register dependence:
   - Write-before-read
@@ -16,7 +22,6 @@ When to *NOT* dual-issue instructions:
     - To check for register dependence:
       - Does first instruction's RD match second instruction's RS1 or RS2?
       - NOTE: Decoder also provides `write_rd`, `read_rs[12]` bits that we can use. e.g. if first instruction doesn't write RD, there can be no dependence
-- Conditional branch as first instruction
 
 FP register file:
  - Add second port
