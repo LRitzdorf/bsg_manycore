@@ -230,14 +230,16 @@ module icache
     : (v_i & ((&pc_r[1+:icache_block_offset_width_lp-1]) | ~read_pc_next_i));
 
 
+  // Determine PC offset, if single-issuing
+  wire pc_offset = stall_for_single_issue_i ? 1'b1 : 1'b0;
+
   // Merge the PC lower part and high part
   // BYTE operations
   instruction_s instr_out [0:1];
   assign instr_out = '{icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp]],
                        icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp] + 'b1]};
-  // NOTE: This could cause problems, since it's designed for just one PC value...
-  wire lower_sign_out = icache_data_lo.lower_sign[pc_r[0+:icache_block_offset_width_lp]];
-  wire lower_cout_out = icache_data_lo.lower_cout[pc_r[0+:icache_block_offset_width_lp]];
+  wire lower_sign_out = icache_data_lo.lower_sign[pc_r[0+:icache_block_offset_width_lp] + pc_offset];
+  wire lower_cout_out = icache_data_lo.lower_cout[pc_r[0+:icache_block_offset_width_lp] + pc_offset];
   wire sel_pc    = ~(lower_sign_out ^ lower_cout_out); 
   wire sel_pc_p1 = (~lower_sign_out) & lower_cout_out; 
 
@@ -280,24 +282,21 @@ module icache
     end
   end
 
-  wire is_jal_instr =  instr_out.op == `RV32_JAL_OP;
-  wire is_jalr_instr = instr_out.op == `RV32_JALR_OP;
+  wire is_jal_instr =  instr_out[pc_offset].op == `RV32_JAL_OP;
+  wire is_jalr_instr = instr_out[pc_offset].op == `RV32_JALR_OP;
 
   // these are bytes address
   logic [pc_width_lp+2-1:0] jal_pc;
   logic [pc_width_lp+2-1:0] branch_pc;
    
-  assign branch_pc = {branch_pc_high_out, `RV32_Bimm_13extract(instr_out)};
-  assign jal_pc = {jal_pc_high_out, `RV32_Jimm_21extract(instr_out)};
+  assign branch_pc = {branch_pc_high_out, `RV32_Bimm_13extract(instr_out[pc_offset])};
+  assign jal_pc = {jal_pc_high_out, `RV32_Jimm_21extract(instr_out[pc_offset])};
 
   // assign outputs.
   assign instr_o = instr_out;
   assign pc_r_o = pc_r;
 
   // this is word addr.
-  // TODO: update as per our plan (i.e. first instruction's prediction if this
-  // is the first cycle of a single-issue-induced stall). Relevant signal:
-  // `stall_for_single_issue`
   assign pred_or_jump_addr_o = is_jal_instr
     ? jal_pc[2+:pc_width_lp]
     : (is_jalr_instr
