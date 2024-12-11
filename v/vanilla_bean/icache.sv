@@ -30,7 +30,7 @@ module icache
     , input w_i
     , input flush_i
     , input read_pc_next_i
-    , input stall_for_single_issue
+    , input stall_for_single_issue_i
 
     // icache write
     , input [pc_width_lp-1:0] w_pc_i
@@ -86,7 +86,7 @@ module icache
     ,.w_i(w_i)
     ,.addr_i(icache_addr_li)
     ,.data_i(icache_data_li)
-    ,.data_o(icache_data_lo) // TODO: If this is too small, we may need to double its width (to hold 2 instructions at once)
+    ,.data_o(icache_data_lo) // NOTE: A single cache line must hold at least two instructions, or we can't dual-issue
   );
 
   assign icache_addr_li = w_i
@@ -234,7 +234,7 @@ module icache
   // BYTE operations
   instruction_s instr_out [0:1];
   assign instr_out = '{icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp]],
-                       icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp] + 1]};
+                       icache_data_lo.instr[pc_r[0+:icache_block_offset_width_lp] + 'b1]};
   // NOTE: This could cause problems, since it's designed for just one PC value...
   wire lower_sign_out = icache_data_lo.lower_sign[pc_r[0+:icache_block_offset_width_lp]];
   wire lower_cout_out = icache_data_lo.lower_cout[pc_r[0+:icache_block_offset_width_lp]];

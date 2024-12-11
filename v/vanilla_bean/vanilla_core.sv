@@ -175,7 +175,7 @@ module vanilla_core
     ,.w_i(icache_w_li)
     ,.flush_i(icache_flush)
     ,.read_pc_next_i(icache_read_pc_next_li)
-    ,.stall_for_single_issue() // TODO: This comes from the new decoder
+    ,.stall_for_single_issue_i() // TODO: This comes from the new decoder
 
     ,.w_pc_i(icache_w_pc)
     ,.w_instr_i(icache_winstr)
