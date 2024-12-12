@@ -160,6 +160,18 @@ module vanilla_core
 
   logic [pc_width_lp-1:0] jalr_prediction; 
   logic [pc_width_lp-1:0] pred_or_jump_addr; 
+
+  // track whether we're currently stalling in order to single-issue an
+  // instruction, or whether we did that one cycle ago
+  logic [1:0] stall_for_single_issue = 1'b1; // TODO: Connect to the new decoder
+  always_ff @ (posedge clk_i) begin
+    if (reset_i) begin
+      stall_for_single_issue[1] <= '0;
+    end
+    else begin
+      stall_for_single_issue[1] <= stall_for_single_issue[0];
+    end
+  end
  
  
   icache #(
@@ -171,11 +183,11 @@ module vanilla_core
     ,.network_reset_i(network_reset_i)
     ,.reset_i(reset_i)
    
-    ,.v_i(icache_v_li)
+    ,.v_i(icache_v_li & ~stall_for_single_issue[0])
     ,.w_i(icache_w_li)
     ,.flush_i(icache_flush)
     ,.read_pc_next_i(icache_read_pc_next_li)
-    ,.stall_for_single_issue_i() // TODO: This comes from the new decoder
+    ,.stall_for_single_issue_i(stall_for_single_issue[0])
 
     ,.w_pc_i(icache_w_pc)
     ,.w_instr_i(icache_winstr)
@@ -192,8 +204,8 @@ module vanilla_core
   );
 
   // NOTE: This is stored without its two LSBs, which are always zero
-  // TODO: This sometimes has to increment by 8 instead of 4
-  wire [pc_width_lp-1:0] pc_next = pc_r + 1'b1;
+  // Increment the program counter by 8 (dual-issue) or 4 (single-issue)
+  wire [pc_width_lp-1:0] pc_next = pc_r + ( stall_for_single_issue == 2'b0 ? 2'b10 : 1'b1 );
 
   // ifetch counter
   logic [lg_icache_block_size_in_words_lp-1:0] ifetch_count_r;
@@ -220,6 +232,7 @@ module vanilla_core
   decode_s decode;
   fp_decode_s fp_decode;
 
+  // TODO: Replace with the new decoder
   cl_decode decode0 (
     .instruction_i(instruction)
     ,.decode_o(decode)
