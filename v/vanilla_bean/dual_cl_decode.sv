@@ -86,8 +86,8 @@ import bsg_manycore_pkg::*;
             decode_o = decode_intermediate[0]
             fp_decode_o = fp_decode_intermediate[0]
         end else begin
-            decode_o = decode_intermediate[1]
-            fp_decode_o = fp_decode_intermediate[1]
+            decode_o = decode_intermediate[0] | decode_intermediate[1]; 
+            fp_decode_o = fp_decode_intermediate[0] | fp_decode_intermediate[1]; 
         end
     end
 
