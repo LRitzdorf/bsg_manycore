@@ -15,7 +15,7 @@ import bsg_manycore_pkg::*;
   input instruction_s instruction_i [0:1]
   , output decode_s decode_o
   , output fp_decode_s fp_decode_o
-  , output do_single_issue // name?
+  , output do_single_issue
 );
 
     decode_s decode_intermediate [0:1];
@@ -55,14 +55,12 @@ import bsg_manycore_pkg::*;
 
     //assign single_issue_pc_op
 
-    // Should we consider no op intructions for single issue as well?
-    localparam instruction_t NO_OP = 32'h00000013; // Standard no-op RISC V
-
     assign single_issue_same_type = 
         (decode_intermediate[0].is_fp_op && decode_intermediate[1].is_fp_op) || // both FP
         (!decode_intermediate[0].is_fp_op && !decode_intermediate[1].is_fp_op); // both INT/regular instruction, this check might have false positives?
 
-    // single issue any special instructons
+    // single issue any special instructons, check first instruction
+    // included jump instructs in case of jumping, they assume PC+4 
     assign  single_issue_special = 
         decode_intermediate[0].is_fence_op ||
         decode_intermediate[0].is_barsend_op ||
@@ -71,25 +69,21 @@ import bsg_manycore_pkg::*;
         decode_intermediate[0].is_mret_op ||
         decode_intermediate[0].is_branch_op || 
         decode_intermediate[0].is_jal_op || // Jump and link
-        deocode_intermeiate[0].is_jalr_op; // Jump and link reg
+        decode_intermediate[0].is_jalr_op; // Jump and link reg
 
-    assign do_single_issue = has_dependency || single_issue_pc_op || single_issue_same_type || single_issue_special;
+    assign do_single_issue = has_dependency  || single_issue_same_type || single_issue_special;
 
-    // OR both lower level decoders
-    //assign decode_o = decode_intermediate[0] | decode_intermediate[1]; 
-    //assign fp_decode_o = fp_decode_intermediate[0] | fp_decode_intermediate[1]; 
-
+    // OR both lower level decoders if its dual; instructions 
     // if single issue only execute first instruction
     // how should the decoder handle the second instruction? - 
     always_comb begin
         if(do_single_issue) begin
-            decode_o = decode_intermediate[0]
-            fp_decode_o = fp_decode_intermediate[0]
+            decode_o = decode_intermediate[0];
+            fp_decode_o = fp_decode_intermediate[0];
         end else begin
             decode_o = decode_intermediate[0] | decode_intermediate[1]; 
             fp_decode_o = fp_decode_intermediate[0] | fp_decode_intermediate[1]; 
         end
     end
-
 
 endmodule
