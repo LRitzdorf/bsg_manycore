@@ -488,12 +488,14 @@ module vanilla_core
   assign remote_interrupt_pending_bit_o = mip_r.remote; // make it accessible by remote packet.
 
   // Interrupt can be taken when mstatus.mie=1 and enable and pending bits are both on for an interrupt source,
-  // When icache miss is not already in progress (e.g. no icache bubble in EXE, MEM or WB)
+  // When icache miss is not already in progress (e.g. no icache bubble in EXE, MEM or WB),
+  // When a single-issue instruction sequence is not in progress
   wire remote_interrupt_ready = mip_r.remote & mie_r.remote;
   wire trace_interrupt_ready = mip_r.trace & mie_r.trace;
   wire interrupt_ready = mstatus_r.mie
                        & (remote_interrupt_ready | trace_interrupt_ready)
-                       & ~(exe_r.icache_miss | mem_ctrl_r.icache_miss | wb_ctrl_r.icache_miss);
+                       & ~(exe_r.icache_miss | mem_ctrl_r.icache_miss | wb_ctrl_r.icache_miss)
+                       & ~stall_for_single_issue;
 
 
 
