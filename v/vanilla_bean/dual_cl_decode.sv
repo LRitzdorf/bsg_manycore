@@ -64,13 +64,32 @@ import bsg_manycore_pkg::*;
 
     // single issue any special instructons
     assign  single_issue_special = 
+        decode_intermediate[0].is_fence_op ||
+        decode_intermediate[0].is_barsend_op ||
+        decode_intermediate[0].is_barrecv_op ||
+        decode_intermediate[0].is_csr_op ||
+        decode_intermediate[0].is_mret_op ||
+        decode_intermediate[0].is_branch_op || 
+        decode_intermediate[0].is_jal_op || // Jump and link
+        deocode_intermeiate[0].is_jalr_op; // Jump and link reg
 
-    //assign do_single_issue = has_dependency || any single issue cond 
-
+    assign do_single_issue = has_dependency || single_issue_pc_op || single_issue_same_type || single_issue_special;
 
     // OR both lower level decoders
-    assign decode_o = decode_intermediate[0] | decode_intermediate[1]; 
-    assign fp_decode_o = fp_decode_intermediate[0] | fp_decode_intermediate[1]; 
+    //assign decode_o = decode_intermediate[0] | decode_intermediate[1]; 
+    //assign fp_decode_o = fp_decode_intermediate[0] | fp_decode_intermediate[1]; 
+
+    // if single issue only execute first instruction
+    // how should the decoder handle the second instruction? - 
+    always_comb begin
+        if(do_single_issue) begin
+            decode_o = decode_intermediate[0]
+            fp_decode_o = fp_decode_intermediate[0]
+        end else begin
+            decode_o = decode_intermediate[1]
+            fp_decode_o = fp_decode_intermediate[1]
+        end
+    end
 
 
 endmodule
