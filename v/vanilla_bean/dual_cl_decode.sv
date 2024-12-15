@@ -12,12 +12,13 @@ module dual_cl_decode
 import bsg_vanilla_pkg::*;
 import bsg_manycore_pkg::*;
 (
-    input_i
-  , reset_i
+    input input_i
+  , input reset_i
   , input instruction_s instruction_i [0:1]
   , output decode_s decode_o
   , output fp_decode_s fp_decode_o
   , output do_single_issue
+  . output is_int
 );
 
     decode_s decode_intermediate [0:1];
@@ -56,9 +57,18 @@ import bsg_manycore_pkg::*;
 
     logic single_issue_same_type, single_issue_special;
 
-    assign single_issue_same_type = 
-        (decode_intermediate[0].is_fp_op && decode_intermediate[1].is_fp_op) || // both FP
-        (!decode_intermediate[0].is_fp_op && !decode_intermediate[1].is_fp_op); // both INT/regular instruction, this check might have false positives?
+    // Treat FP load operations as INT ops so they can dual issue with FP ops
+    logic is_fp_load_0, is_fp_load_1;
+    assign is_fp_load_0 = decode_intermediate[0].is_load_op && decode_intermediate[0].is_fp_op;
+    assign is_fp_load_1 = decode_intermediate[1].is_load_op && decode_intermediate[1].is_fp_op;
+
+    // Determine if both instructions are of the same type (INT/FP), consider FP loads as INT
+    assign single_issue_same_type =
+        ((decode_intermediate[0].is_fp_op && !is_fp_load_0) &&
+         (decode_intermediate[1].is_fp_op && !is_fp_load_1)) || // Both are true FP ops
+        ((!decode_intermediate[0].is_fp_op || is_fp_load_0) &&
+         (!decode_intermediate[1].is_fp_op || is_fp_load_1)) || // Both are INT/FP load ops
+        (is_fp_load_0 && is_fp_load_1); // Prevent two FP loads from dual-issuing
 
     // single issue any special instructons, check first instruction
     // included jump instructs in case of jumping, they assume PC+4 
@@ -74,6 +84,17 @@ import bsg_manycore_pkg::*;
         decode_intermediate[0].is_auipc_op;
 
     assign do_single_issue = has_dependency  || single_issue_same_type || single_issue_special;
+
+    // Indicate if instruction 0 or 1 are true INT op (excluding FP laod)
+    always_comb begin
+        if (!decode_intermediate[0].is_fp_op) begin
+            is_int = 0;
+        end else if (!decode_intermediate[1].is_fp_op) begin
+            is_int = 1;
+        end else begin
+            is_int = 'x; // Neither instruction is INT (both are FP)
+        end
+    end
 
     // State to track single-issue progress
     logic single_issue_state; // 0: Issue first instruction, 1: Issue second instruction
