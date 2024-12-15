@@ -12,7 +12,7 @@ module dual_cl_decode
 import bsg_vanilla_pkg::*;
 import bsg_manycore_pkg::*;
 (
-    input input_i
+    input clk_i
   , input reset_i
   , input instruction_s instruction_i [0:1]
   , output decode_s decode_o
