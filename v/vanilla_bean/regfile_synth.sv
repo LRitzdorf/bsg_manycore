@@ -48,8 +48,8 @@ module regfile_synth
     for (genvar i = 0; i < num_rs_p; i++)
       assign r_data_o[i] = (r_addr_r[i] == '0)? '0 : mem_r[r_addr_r[i]];
 
-    always_ff @ (posedge clk_i)
-      for (genvar i = 0; i < num_rd_p; i++)
+    for (genvar i = 0; i < num_rd_p; i++)
+      always_ff @ (posedge clk_i)
         if (w_v_i[i] & (w_addr_i[i] != '0))
           // NOTE: In case of write address overlap, higher-indexed port wins
           mem_r[w_addr_i[i]] <= w_data_i[i];
@@ -63,8 +63,8 @@ module regfile_synth
     for (genvar i = 0; i < num_rs_p; i++)
       assign r_data_o[i] = mem_r[r_addr_r[i]];
 
-    always_ff @ (posedge clk_i)
-      for (genvar i = 0; i < num_rd_p; i++)
+    for (genvar i = 0; i < num_rd_p; i++)
+      always_ff @ (posedge clk_i)
         if (w_v_i[i])
           // NOTE: In case of write address overlap, higher-indexed port wins
           mem_r[w_addr_i[i]] <= w_data_i[i];
