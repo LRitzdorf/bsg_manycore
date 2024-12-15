@@ -159,6 +159,7 @@ VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/network_tx.sv
 VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/vanilla_core.sv
 VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/alu.sv
 VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/cl_decode.sv
+VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/dual_cl_decode.sv
 VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/fpu_float.sv
 VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/fpu_float_fma.sv
 VSOURCES += $(BSG_MANYCORE_DIR)/v/vanilla_bean/fpu_float_fma_round.sv
