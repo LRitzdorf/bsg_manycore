@@ -163,7 +163,7 @@ module vanilla_core
 
   // track whether we're currently stalling in order to single-issue an
   // instruction, or whether we did that one cycle ago
-  logic [1:0] stall_for_single_issue = 1'b1; // TODO: Connect to the new decoder
+  logic [1:0] stall_for_single_issue = 1'b1;
   always_ff @ (posedge clk_i) begin
     if (reset_i) begin
       stall_for_single_issue[1] <= '0;
@@ -232,11 +232,12 @@ module vanilla_core
   decode_s decode;
   fp_decode_s fp_decode;
 
-  // TODO: Replace with the new decoder
-  cl_decode decode0 (
-    .instruction_i(instruction)
+  dual_cl_decode decode0 (
+    .reset_i(reset_i)
+    ,.instruction_i(instruction)
     ,.decode_o(decode)
     ,.fp_decode_o(fp_decode)
+    ,.do_single_issue(stall_for_single_issue)
   ); 
 
 
@@ -320,7 +321,6 @@ module vanilla_core
 
   // FP regfile
   //
-  // TODO: Add second write port, specifically for FP loads
   logic [1:0] float_rf_wen;
   logic [1:0][reg_addr_width_lp-1:0] float_rf_waddr;
   logic [1:0][fpu_recoded_data_width_gp-1:0] float_rf_wdata;
