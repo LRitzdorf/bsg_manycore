@@ -152,7 +152,7 @@ module vanilla_core
   logic [data_width_p-1:0] icache_winstr;
 
   logic [pc_width_lp-1:0] pc_n, pc_r;
-  instruction_s instruction [0:1]; // TODO: This is now a 2-element vector; update it in all the places
+  instruction_s instruction [0:1];
   logic icache_miss;
   logic icache_flush;
   logic icache_flush_r_lo;
@@ -170,6 +170,23 @@ module vanilla_core
     end
     else begin
       stall_for_single_issue[1] <= stall_for_single_issue[0];
+    end
+  end
+
+  // Indices (0/1) that tell us which instruction is the INT one
+  wire int_instr_idx_temp, int_instr_idx;
+  // When single-issuing, the INT instruction controls important logic, so
+  // int_instr_idx must be 0 on the first clock cycle and 1 on the second
+  always_comb begin
+    if (stall_for_single_issue[0]) begin
+      // Executing the first instruction of a pair
+      int_instr_idx = 'b0;
+    end else if (stall_for_single_issue[1]) begin
+      // Executing the second instruction of a pair
+      int_instr_idx = 'b1;
+    end else begin
+      // Dual-issuing; defer to the dedicated module for this
+      int_instr_idx = int_instr_idx_temp;
     end
   end
  
@@ -233,11 +250,13 @@ module vanilla_core
   fp_decode_s fp_decode;
 
   dual_cl_decode decode0 (
-    .reset_i(reset_i)
+    .clk_i(clk_i)
+    ,.reset_i(reset_i)
     ,.instruction_i(instruction)
     ,.decode_o(decode)
     ,.fp_decode_o(fp_decode)
     ,.do_single_issue(stall_for_single_issue)
+    ,.is_int(int_instr_idx_temp)
   ); 
 
 
@@ -281,7 +300,7 @@ module vanilla_core
     ,.w_data_i(int_rf_wdata)
 
     ,.r_v_i(int_rf_read)
-    ,.r_addr_i({instruction.rs2, instruction.rs1})
+    ,.r_addr_i({instruction[int_instr_idx].rs2, instruction[int_instr_idx].rs1})
     ,.r_data_o(int_rf_rdata)
   );
   
@@ -303,8 +322,8 @@ module vanilla_core
     .clk_i(clk_i)
     ,.reset_i(reset_i)
   
-    ,.src_id_i({id_r.instruction.rs2, id_r.instruction.rs1})
-    ,.dest_id_i(id_r.instruction.rd)
+    ,.src_id_i({id_r.instruction[int_instr_idx].rs2, id_r.instruction[int_instr_idx].rs1})
+    ,.dest_id_i(id_r.instruction[int_instr_idx].rd)
 
     ,.op_reads_rf_i({id_r.decode.read_rs2, id_r.decode.read_rs1})
     ,.op_writes_rf_i(id_r.decode.write_rd)
@@ -343,7 +362,7 @@ module vanilla_core
     ,.w_data_i(float_rf_wdata)
 
     ,.r_v_i(float_rf_read)
-    ,.r_addr_i({instruction[31:27], instruction.rs2, instruction.rs1})
+    ,.r_addr_i({instruction[~int_instr_idx][31:27], instruction[~int_instr_idx].rs2, instruction[~int_instr_idx].rs1})
     ,.r_data_o(float_rf_rdata)
   );
 
@@ -365,8 +384,8 @@ module vanilla_core
     .clk_i(clk_i)
     ,.reset_i(reset_i)
   
-    ,.src_id_i({id_r.instruction[31:27], id_r.instruction.rs2, id_r.instruction.rs1})
-    ,.dest_id_i(id_r.instruction.rd)
+    ,.src_id_i({id_r.instruction[~int_instr_idx][31:27], id_r.instruction[~int_instr_idx].rs2, id_r.instruction[~int_instr_idx].rs1})
+    ,.dest_id_i(id_r.instruction[~int_instr_idx].rd)
 
     ,.op_reads_rf_i({id_r.decode.read_frs3, id_r.decode.read_frs2, id_r.decode.read_frs1})
     ,.op_writes_rf_i(id_r.decode.write_frd)
@@ -443,10 +462,10 @@ module vanilla_core
     ,.remote_interrupt_clear_i(remote_interrupt_clear_i)
 
     ,.we_i      (mcsr_we_li)
-    ,.addr_i    (id_r.instruction[31:20])
-    ,.funct3_i  (id_r.instruction.funct3)
+    ,.addr_i    (id_r.instruction[int_instr_idx][31:20])
+    ,.funct3_i  (id_r.instruction[int_instr_idx].funct3)
     ,.data_i    (mcsr_data_li)
-    ,.rs1_i     (id_r.instruction.rs1)
+    ,.rs1_i     (id_r.instruction[int_instr_idx].rs1)
     ,.data_o    (mcsr_data_lo)
 
     ,.cfg_pod_reset_val_i({global_y_i[y_cord_width_p-1-:pod_y_cord_width_p]
@@ -502,9 +521,9 @@ module vanilla_core
   // calculate mem address offset
   //
   wire [RV32_Iimm_width_gp-1:0] mem_addr_op2 = id_r.decode.is_store_op
-    ? `RV32_Simm_12extract(id_r.instruction)
+    ? `RV32_Simm_12extract(id_r.instruction[int_instr_idx])
     : (id_r.decode.is_load_op
-      ? `RV32_Iimm_12extract(id_r.instruction)
+      ? `RV32_Iimm_12extract(id_r.instruction[int_instr_idx])
       : '0);
 
   // 'aq' register
@@ -526,7 +545,7 @@ module vanilla_core
     else begin
       if (aq_set) begin
         aq_r <= 1'b1;
-        aq_rd_r <= id_r.instruction.rd;
+        aq_rd_r <= id_r.instruction[int_instr_idx].rd;
       end
       else if (aq_clear) begin
         aq_r <= 1'b0;
@@ -667,7 +686,7 @@ module vanilla_core
     .rs1_i(exe_r.rs1_val)
     ,.rs2_i(exe_r.rs2_val)
     ,.pc_next_i(exe_r.pc_next)
-    ,.op_i(exe_r.instruction)
+    ,.op_i(exe_r.instruction[int_instr_idx])
     ,.result_o(alu_result)
     ,.jalr_addr_o(alu_jalr_addr)
     ,.jump_now_o(alu_jump_now)
@@ -679,7 +698,7 @@ module vanilla_core
   // For risc-v, hints for saving return address for jalr/jal are encoded implicitly in the rd used.
   // For jalr/jal, save the pc+4 when rd = x1 or x5.
   wire jalr_prediction_write_en = (exe_r.decode.is_jal_op | exe_r.decode.is_jalr_op)
-    & ((exe_r.instruction.rd == 5'd1) | (exe_r.instruction.rd == 5'd5));
+    & ((exe_r.instruction[int_instr_idx].rd == 5'd1) | (exe_r.instruction[int_instr_idx].rd == 5'd5));
 
   bsg_dff_reset_en_bypass #(
     .width_p(pc_width_lp)
@@ -713,7 +732,7 @@ module vanilla_core
     ,.v_i(idiv_v_li)
     ,.rs1_i(exe_r.rs1_val)
     ,.rs2_i(exe_r.rs2_val)
-    ,.rd_i(exe_r.instruction.rd)
+    ,.rd_i(exe_r.instruction[int_instr_idx].rd)
     ,.op_i(exe_r.decode.idiv_op)
     ,.ready_and_o(idiv_ready_and_lo)
   
@@ -745,7 +764,7 @@ module vanilla_core
     ,.exe_decode_i(exe_r.decode)
     ,.exe_rs1_i(exe_r.rs1_val)
     ,.exe_rs2_i(exe_r.rs2_val)
-    ,.exe_rd_i(exe_r.instruction.rd)
+    ,.exe_rd_i(exe_r.instruction[int_instr_idx].rd)
     ,.mem_offset_i(exe_r.mem_addr_op2)
     ,.pc_next_i(exe_r.pc_next)
     ,.icache_miss_i(exe_r.icache_miss)
