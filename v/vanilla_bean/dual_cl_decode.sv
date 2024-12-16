@@ -18,7 +18,7 @@ import bsg_manycore_pkg::*;
   , output decode_s decode_o
   , output fp_decode_s fp_decode_o
   , output do_single_issue
-  , output is_int
+  , output logic is_int
 );
 
     decode_s decode_intermediate [0:1];
