@@ -163,13 +163,13 @@ module vanilla_core
 
   // track whether we're currently stalling in order to single-issue an
   // instruction, or whether we did that one cycle ago
-  logic [1:0] stall_for_single_issue = 1'b1;
+  logic stall_for_single_issue, stall_for_single_issue_r;
   always_ff @ (posedge clk_i) begin
     if (reset_i) begin
-      stall_for_single_issue[1] <= '0;
+      stall_for_single_issue_r <= '0;
     end
     else begin
-      stall_for_single_issue[1] <= stall_for_single_issue[0];
+      stall_for_single_issue_r <= stall_for_single_issue;
     end
   end
 
@@ -178,10 +178,10 @@ module vanilla_core
   // When single-issuing, the INT instruction controls important logic, so
   // int_instr_idx must be 0 on the first clock cycle and 1 on the second
   always_comb begin
-    if (stall_for_single_issue[0]) begin
+    if (stall_for_single_issue) begin
       // Executing the first instruction of a pair
       int_instr_idx = 'b0;
-    end else if (stall_for_single_issue[1]) begin
+    end else if (stall_for_single_issue_r) begin
       // Executing the second instruction of a pair
       int_instr_idx = 'b1;
     end else begin
@@ -200,11 +200,11 @@ module vanilla_core
     ,.network_reset_i(network_reset_i)
     ,.reset_i(reset_i)
    
-    ,.v_i(icache_v_li & ~stall_for_single_issue[0])
+    ,.v_i(icache_v_li & ~stall_for_single_issue)
     ,.w_i(icache_w_li)
     ,.flush_i(icache_flush)
     ,.read_pc_next_i(icache_read_pc_next_li)
-    ,.stall_for_single_issue_i(stall_for_single_issue[0])
+    ,.stall_for_single_issue_i(stall_for_single_issue)
 
     ,.w_pc_i(icache_w_pc)
     ,.w_instr_i(icache_winstr)
@@ -222,7 +222,10 @@ module vanilla_core
 
   // NOTE: This is stored without its two LSBs, which are always zero
   // Increment the program counter by 8 (dual-issue) or 4 (single-issue)
-  wire [pc_width_lp-1:0] pc_next = pc_r + ( stall_for_single_issue == 2'b0 ? 2'b10 : 1'b1 );
+  wire [pc_width_lp-1:0] pc_next = pc_r + (
+      ((stall_for_single_issue == 1'b0)
+      & (stall_for_single_issue_r == 1'b0))
+    ? 2'b10 : 2'b1);
 
   // ifetch counter
   logic [lg_icache_block_size_in_words_lp-1:0] ifetch_count_r;
