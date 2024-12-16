@@ -216,7 +216,7 @@ typedef struct packed
 {
     logic [RV32_reg_data_width_gp-1:0] pc_next;           // PC + 4 (or +8, if dual-issuing)
     logic [RV32_reg_data_width_gp-1:0] pred_or_jump_addr; // Jump target PC
-    instruction_s                      instruction;       // Instruction being executed
+    instruction_s                      instruction [0:1]; // Instruction being executed
     decode_s                           decode;            // Decode signals
     fp_decode_s                        fp_decode;
     logic                              icache_miss;
@@ -229,7 +229,7 @@ typedef struct packed
 {
     logic [RV32_reg_data_width_gp-1:0] pc_next;           // PC + 4 (or +8, if dual-issuing)
     logic [RV32_reg_data_width_gp-1:0] pred_or_jump_addr; // Jump target PC
-    instruction_s                      instruction;       // Instruction being executed
+    instruction_s                      instruction [0:1]; // Instruction being executed
     decode_s                           decode;            // Decode signals
     logic [RV32_reg_data_width_gp-1:0] rs1_val;           // RF output data from RS1 address
     logic [RV32_reg_data_width_gp-1:0] rs2_val;           // RF output data from RS2 address

@@ -889,7 +889,7 @@ module vanilla_core
     ,.imul_v_i(exe_r.decode.is_imul_op)
     ,.imul_rs1_i(exe_r.rs1_val)
     ,.imul_rs2_i(exe_r.rs2_val)
-    ,.imul_rd_i(exe_r.instruction.rd)
+    ,.imul_rd_i(exe_r.instruction[~int_instr_idx].rd)
 
     ,.fp_v_i(fp_exe_ctrl_r.fp_decode.is_fpu_float_op)
     ,.fpu_float_op_i(fp_exe_ctrl_r.fp_decode.fpu_float_op)
@@ -1367,10 +1367,10 @@ module vanilla_core
   assign float_rf_read[2] = id_n.decode.read_frs3 & rf_read_en;
 
   // helpful control signals;
-  wire [reg_addr_width_lp-1:0] id_rs1 = id_r.instruction.rs1;
-  wire [reg_addr_width_lp-1:0] id_rs2 = id_r.instruction.rs2;
-  wire [reg_addr_width_lp-1:0] id_rs3 = id_r.instruction[31:27];
-  wire [reg_addr_width_lp-1:0] id_rd = id_r.instruction.rd;
+  wire [reg_addr_width_lp-1:0] id_rs1 = id_r.instruction[int_instr_idx].rs1;
+  wire [reg_addr_width_lp-1:0] id_rs2 = id_r.instruction[int_instr_idx].rs2;
+  wire [reg_addr_width_lp-1:0] id_rs3 = id_r.instruction[int_instr_idx][31:27];
+  wire [reg_addr_width_lp-1:0] id_rd = id_r.instruction[int_instr_idx].rd;
   wire remote_req_in_exe = lsu_remote_req_v_lo;
   wire local_load_in_exe = lsu_dmem_v_lo & ~lsu_dmem_w_lo;
   wire id_rs1_non_zero = id_rs1 != '0;
@@ -1380,9 +1380,9 @@ module vanilla_core
   wire float_remote_load_in_exe = remote_req_in_exe & exe_r.decode.is_load_op & exe_r.decode.write_frd;
   wire fdiv_fsqrt_in_fp_exe = fp_exe_ctrl_r.fp_decode.is_fdiv_op | fp_exe_ctrl_r.fp_decode.is_fsqrt_op;
   wire remote_credit_pending = (out_credits_used_i != '0);
-  wire id_rs1_equal_exe_rd = (id_rs1 == exe_r.instruction.rd);
-  wire id_rs2_equal_exe_rd = (id_rs2 == exe_r.instruction.rd);
-  wire id_rs3_equal_exe_rd = (id_rs3 == exe_r.instruction.rd);
+  wire id_rs1_equal_exe_rd = (id_rs1 == exe_r.instruction[int_instr_idx].rd);
+  wire id_rs2_equal_exe_rd = (id_rs2 == exe_r.instruction[int_instr_idx].rd);
+  wire id_rs3_equal_exe_rd = (id_rs3 == exe_r.instruction[int_instr_idx].rd);
   wire id_rs1_equal_fp_exe_rd = (id_rs1 == fp_exe_ctrl_r.rd);
   wire id_rs2_equal_fp_exe_rd = (id_rs2 == fp_exe_ctrl_r.rd);
   wire id_rs3_equal_fp_exe_rd = (id_rs3 == fp_exe_ctrl_r.rd);
@@ -1509,8 +1509,8 @@ module vanilla_core
 
   // stall_fcsr
   assign stall_fcsr = (id_r.decode.is_csr_op)
-    & ((id_r.instruction[31:20] == `RV32_CSR_FFLAGS_ADDR)
-      |(id_r.instruction[31:20] == `RV32_CSR_FCSR_ADDR))
+    & ((id_r.instruction[~int_instr_idx][31:20] == `RV32_CSR_FFLAGS_ADDR)
+      |(id_r.instruction[~int_instr_idx][31:20] == `RV32_CSR_FCSR_ADDR))
     & (fp_exe_ctrl_r.fp_decode.is_fpu_float_op
       |fp_exe_ctrl_r.fp_decode.is_fpu_int_op
       |fp_exe_ctrl_r.fp_decode.is_fdiv_op
@@ -1587,10 +1587,10 @@ module vanilla_core
 
   // FCSR control
   assign fcsr_v_li = (id_r.decode.is_csr_op) & id_issue; 
-  assign fcsr_funct3_li = id_r.instruction.funct3;
-  assign fcsr_rs1_li = id_r.instruction.rs1;
+  assign fcsr_funct3_li = id_r.instruction[int_instr_idx].funct3;
+  assign fcsr_rs1_li = id_r.instruction[int_instr_idx].rs1;
   assign fcsr_data_li = rs1_val_to_exe[7:0];
-  assign fcsr_addr_li = id_r.instruction[31:20];
+  assign fcsr_addr_li = id_r.instruction[int_instr_idx][31:20];
 
 
   // interrupt / CSR control
@@ -1666,7 +1666,7 @@ module vanilla_core
 
   // int scoreboard set logic
   assign int_sb_score = ~stall_all & (exe_r.decode.is_idiv_op | exe_r.decode.is_amo_op | int_remote_load_in_exe);
-  assign int_sb_score_id = exe_r.instruction.rd;  
+  assign int_sb_score_id = exe_r.instruction[int_instr_idx].rd;  
 
   // exe_result
   assign exe_result = fp_exe_ctrl_r.fp_decode.is_fpu_int_op
@@ -1678,13 +1678,13 @@ module vanilla_core
 
   // ID -> FP_EXE
   frm_e fpu_rm;
-  assign fpu_rm = frm_e'((id_r.instruction.funct3 == eDYN)
+  assign fpu_rm = frm_e'((id_r.instruction[~int_instr_idx].funct3 == eDYN)
     ? frm_r
-    : id_r.instruction.funct3);
+    : id_r.instruction[~int_instr_idx].funct3);
 
   always_comb begin
     fp_exe_ctrl_n = '{
-      rd: id_r.instruction.rd,
+      rd: id_r.instruction[~int_instr_idx].rd,
       fp_decode: id_r.fp_decode,
       rm: fpu_rm
     };
@@ -1725,14 +1725,14 @@ module vanilla_core
   assign float_sb_score = ~stall_all & (fdiv_fsqrt_in_fp_exe | float_remote_load_in_exe);
   assign float_sb_score_id = fdiv_fsqrt_in_fp_exe
     ? fp_exe_ctrl_r.rd
-    : exe_r.instruction.rd;
+    : exe_r.instruction[~int_instr_idx].rd;
 
 
   // EXE,FP_EXE -> MEM
   always_comb begin
     // common case
     mem_ctrl_n = '{
-      rd_addr: exe_r.instruction.rd,
+      rd_addr: exe_r.instruction[int_instr_idx].rd,
       write_rd: exe_r.decode.write_rd,
       write_frd: exe_r.decode.write_frd,
       is_byte_op: exe_r.decode.is_byte_op,
@@ -2012,7 +2012,7 @@ module vanilla_core
         assert(fdiv_fsqrt_ready_and_lo) else $error("fdiv_fsqrt_op issued, when fdiv_fsqrt is not ready.");
       end
 
-      assert(~id_r.decode.unsupported) else $error("Unsupported instruction: %8x", id_r.instruction);
+      assert(~id_r.decode.unsupported) else $error("Unsupported instruction: %8x or %8x", id_r.instruction[0], id_r.instruction[1]);
     end
   end
   // synopsys translate_on
