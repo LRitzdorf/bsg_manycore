@@ -38,8 +38,16 @@ import bsg_manycore_pkg::*;
 
     // Determine if there is a dependency
     // check if the second address uses rs1
-    logic write_read_dependency = cl_decode_inst1.write_rd & (cl_decode_inst1.rd == cl_decode_inst2.rs1 | cl_decode_inst1.rd == cl_decode_inst2.rs2) & cl_decode_inst2.read_rs2;
-    logic write_write_dependency = cl_decode_inst1.write_rd & cl_decode_inst2.write_rd & (cl_decode_inst1.rd == cl_decode_inst2.rd);
+    logic write_read_dependency = 
+        decode_intermediate[0].write_rd & 
+        (decode_intermediate[0].rd == decode_intermediate[1].rs1 | 
+         decode_intermediate[0].rd == decode_intermediate[1].rs2) & 
+        decode_intermediate[1].read_rs2;
+
+    logic write_write_dependency = 
+        decode_intermediate[0].write_rd & 
+        decode_intermediate[1].write_rd & 
+        (decode_intermediate[0].rd == decode_intermediate[1].rd);
 
     logic has_dependency = write_read_dependency | write_write_dependency;    
 
