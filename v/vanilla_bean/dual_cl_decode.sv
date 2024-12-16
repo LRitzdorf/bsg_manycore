@@ -36,6 +36,7 @@ import bsg_manycore_pkg::*;
         .fp_decode_o(fp_decode_intermediate[1])
     );
 
+/*
     // Determine if there is a dependency
     // check if the second address uses rs1
     logic write_read_dependency = 
@@ -48,6 +49,21 @@ import bsg_manycore_pkg::*;
         decode_intermediate[0].write_rd & 
         decode_intermediate[1].write_rd & 
         (decode_intermediate[0].rd == decode_intermediate[1].rd);
+*/
+
+    // was referencing the wrong thing to check
+    // Determine if there is a dependency
+    // check if the second address uses rs1
+    logic write_read_dependency =
+        decode_intermediate[0].write_rd &
+        (instruction_i[0].rd == instruction_i[1].rs1 |
+         instruction_i[0].rd == instruction_i[1].rs2) &
+         decode_intermediate[1].read_rs2;
+
+    logic write_write_dependency =
+        decode_intermediate[0].write_rd &
+        decode_intermediate[1].write_rd &
+        (instruction_i[0].rd == instruction_i[1].rd);
 
     logic has_dependency = write_read_dependency | write_write_dependency;    
 
@@ -88,8 +104,8 @@ import bsg_manycore_pkg::*;
         decode_intermediate[0].is_mret_op ||
         decode_intermediate[0].is_branch_op || 
         decode_intermediate[0].is_jal_op || // Jump and link
-        decode_intermediate[0].is_jalr_op || // Jump and link reg
-        decode_intermediate[0].is_auipc_op;
+        decode_intermediate[0].is_jalr_op; // Jump and link reg
+        //decode_intermediate[0].is_auipc_op;
 
     assign do_single_issue = has_dependency  || single_issue_same_type || single_issue_special;
 
