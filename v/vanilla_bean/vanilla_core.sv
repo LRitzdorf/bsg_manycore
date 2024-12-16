@@ -174,7 +174,7 @@ module vanilla_core
   end
 
   // Indices (0/1) that tell us which instruction is the INT one
-  wire int_instr_idx_temp, int_instr_idx;
+  logic int_instr_idx_temp, int_instr_idx;
   // When single-issuing, the INT instruction controls important logic, so
   // int_instr_idx must be 0 on the first clock cycle and 1 on the second
   always_comb begin
