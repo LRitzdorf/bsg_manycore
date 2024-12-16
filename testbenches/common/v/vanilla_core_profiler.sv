@@ -89,8 +89,8 @@ module vanilla_core_profiler
     , input [reg_addr_width_lp-1:0] int_sb_clear_id
     , input [reg_addr_width_lp-1:0] float_sb_clear_id
 
-    , input id_signals_s id_r
-    , input exe_signals_s exe_r
+    , input id_signals_dual_s id_r
+    , input exe_signals_dual_s exe_r
     , input fp_exe_ctrl_signals_s fp_exe_ctrl_r
 
     // IF stage
