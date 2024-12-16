@@ -1313,7 +1313,7 @@ module vanilla_core
     id_n = '{
       pc_next: {{(data_width_p-pc_width_lp-2){1'b0}}, pc_next, 2'b0},
       pred_or_jump_addr: {{(data_width_p-pc_width_lp-2){1'b0}}, pred_or_jump_addr, 2'b0},
-      instruction: instruction,
+      instruction: {instruction[0], instruction[1]},
       decode: decode,
       fp_decode: fp_decode,
       icache_miss: 1'b0,
