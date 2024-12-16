@@ -130,8 +130,8 @@ module vanilla_core
   // data signals are not reset to zero.
   logic id_en, exe_en, mem_ctrl_en, mem_data_en,
         fp_exe_ctrl_en, fp_exe_data_en, flw_wb_ctrl_en, flw_wb_data_en;
-  id_signals_s id_r, id_n;
-  exe_signals_s exe_r, exe_n;
+  id_signals_dual_s id_r, id_n;
+  exe_signals_dual_s exe_r, exe_n;
   mem_ctrl_signals_s mem_ctrl_r, mem_ctrl_n;
   mem_data_signals_s mem_data_r, mem_data_n;
   wb_ctrl_signals_s wb_ctrl_r, wb_ctrl_n;
@@ -267,7 +267,7 @@ module vanilla_core
   //////////////////////////////
 
   bsg_dff_reset_en #(
-    .width_p($bits(id_signals_s))
+    .width_p($bits(id_signals_dual_s))
   ) id_pipeline (
     .clk_i(clk_i)
     ,.reset_i(reset_i)
@@ -663,7 +663,7 @@ module vanilla_core
   //////////////////////////////
 
   bsg_dff_reset_en #(
-    .width_p($bits(exe_signals_s))
+    .width_p($bits(exe_signals_dual_s))
   ) exe_pipeline (
     .clk_i(clk_i)
     ,.reset_i(reset_i)
